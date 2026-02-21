@@ -5,9 +5,10 @@ import sys
 import subprocess
 import time
 
-# --- إعداد المسارات المخصصة التي ذكرتها ---
-BASE_PATH = r"C:\Users\LENOVO\Desktop\بطاطس os"
-SYSTEM_FILES_PATH = os.path.join(BASE_PATH, "ملفات النظام")
+# --- جعل المسارات ديناميكية (تشتغل عند أي حد) ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# البحث عن مجلد "ملفات النظام" في نفس مكان هذا الملف
+SYSTEM_FILES_PATH = os.path.join(BASE_DIR, "ملفات النظام")
 
 class BatataLauncher:
     def __init__(self, root):
@@ -15,9 +16,9 @@ class BatataLauncher:
         self.root.title("Batata OS - Bootloader")
         self.root.geometry("500x300")
         self.root.configure(bg="#111")
-        self.root.overrideredirect(True) # إخفاء حواف النافذة لشكل أكثر احترافية
+        self.root.overrideredirect(True)
         
-        # تمركز النافذة في وسط الشاشة
+        # تمركز النافذة
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
         x = (screen_width // 2) - (500 // 2)
@@ -36,41 +37,38 @@ class BatataLauncher:
         self.progress.pack(pady=20)
 
     def start_check_sequence(self):
-        steps = [
-            ("Checking Directory Structure...", 20),
-            ("Loading System Modules...", 40),
-            ("Verifying Terminal Scripts...", 60),
-            ("Checking GUI Components...", 80),
-            ("Launching Main OS...", 100)
+        # مصفوفة الفحص
+        checks = [
+            ("Verifying System Directory...", 30),
+            ("Checking Main Kernel...", 60),
+            ("Preparing APScell Environment...", 90),
+            ("Starting Batata OS...", 100)
         ]
         
-        for i, (text, val) in enumerate(steps):
+        for text, val in checks:
             self.status_lbl.config(text=text)
             self.progress['value'] = val
             self.root.update()
-            time.sleep(0.7) # محاكاة وقت التحميل
+            time.sleep(0.6)
             
-            # فحص وجود المجلد الأساسي في كل خطوة
-            if i == 0 and not os.path.exists(SYSTEM_FILES_PATH):
-                messagebox.showerror("Error", f"تعذر العثور على مجلد: ملفات النظام\nالمسار: {SYSTEM_FILES_PATH}")
+            if val == 30 and not os.path.exists(SYSTEM_FILES_PATH):
+                messagebox.showerror("Error", "Critical: 'ملفات النظام' folder not found!")
                 self.root.destroy()
                 return
 
         self.launch_main_system()
 
     def launch_main_system(self):
-        # تشغيل ملف main_os.py الموجود داخل مجلد ملفات النظام
         main_script = os.path.join(SYSTEM_FILES_PATH, "main_os.py")
-        
         if os.path.exists(main_script):
             try:
-                # تشغيل النظام في عملية منفصلة وإغلاق اللانشر
+                # تشغيل النظام باستدعاء مفسر بايثون الحالي
                 subprocess.Popen([sys.executable, main_script])
                 self.root.destroy()
             except Exception as e:
-                messagebox.showerror("Execution Error", f"فشل تشغيل النظام: {e}")
+                messagebox.showerror("Error", f"Failed to launch: {e}")
         else:
-            messagebox.showerror("Error", f"ملف main_os.py غير موجود في:\n{SYSTEM_FILES_PATH}")
+            messagebox.showerror("Error", "main_os.py is missing!")
             self.root.destroy()
 
 if __name__ == "__main__":

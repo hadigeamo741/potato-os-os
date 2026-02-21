@@ -1,88 +1,82 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox
 import os
 import subprocess
+import webbrowser
 from time import strftime
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# --- تحديد المسارات بشكل ديناميكي داخل المجلد ---
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+# نفترض وجود مجلد Assets داخل ملفات النظام للصور
+ASSETS_PATH = os.path.join(CURRENT_DIR, "Assets")
 
 class BatataOS:
     def __init__(self, root):
         self.root = root
-        self.root.title("Batata OS Pro")
-        self.root.state('zoomed') # تشغيل فول سكرين
+        self.root.title("Batata OS Pro - GitHub Edition")
+        self.root.state('zoomed')
         self.root.configure(bg="#1a1a1a")
-        
-        self.start_menu = None # متغير لتخزين نافذة القائمة
-        
+        self.start_menu = None
         self.setup_ui()
 
     def setup_ui(self):
-        # --- 1. الأيقونات الذكية ---
-        self.create_smart_icon("Terminal", "📟", 0.08, 0.1, self.open_terminal, "#00FF00")
-        self.create_smart_icon("Browser", "🌐", 0.08, 0.25, self.open_browser, "#4285F4")
-        self.create_smart_icon("Files", "📁", 0.08, 0.40, lambda: os.startfile(BASE_DIR), "#F1C40F")
+        # محاولة تحميل الخلفية
+        try:
+            bg_path = os.path.join(ASSETS_PATH, "wallpaper.png")
+            if os.path.exists(bg_path):
+                self.bg_img = tk.PhotoImage(file=bg_path)
+                tk.Label(self.root, image=self.bg_img).place(relwidth=1, relheight=1)
+        except: pass
 
-        # --- 2. شريط المهام ---
-        self.taskbar = tk.Frame(self.root, bg="#111111", height=50)
-        self.taskbar.pack(side="bottom", fill="x")
+        # أيقونات سطح المكتب (النسب المئوية تضمن ثباتها في GitHub للكل)
+        self.create_icon("Terminal", "📟", 0.08, 0.15, self.open_terminal, "#00FF00")
+        self.create_icon("Browser", "🌐", 0.08, 0.30, self.open_browser, "#4285F4")
+        self.create_icon("System", "📁", 0.08, 0.45, lambda: os.startfile(CURRENT_DIR), "#F1C40F")
 
-        # زر ابدأ
-        self.start_btn = tk.Button(self.taskbar, text="🥔 Start", font=("Arial", 11, "bold"),
-                                  bg="#FFD700", fg="black", padx=20, bd=0, 
-                                  command=self.toggle_start_menu)
-        self.start_btn.pack(side="left", padx=10, pady=5)
+        # شريط المهام
+        taskbar = tk.Frame(self.root, bg="#111", height=50)
+        taskbar.pack(side="bottom", fill="x")
 
-        # الساعة
-        self.clock_lbl = tk.Label(self.taskbar, font=('Arial', 11, 'bold'), bg="#111111", fg="white")
+        tk.Button(taskbar, text="🥔 Start", font=("Arial", 11, "bold"), bg="#FFD700", 
+                  bd=0, padx=20, command=self.toggle_start_menu).pack(side="left", padx=10, pady=5)
+
+        self.clock_lbl = tk.Label(taskbar, font=('Arial', 11), bg="#111", fg="white")
         self.clock_lbl.pack(side="right", padx=20)
         self.update_clock()
 
+    def create_icon(self, name, icon, relx, rely, cmd, color):
+        btn = tk.Button(self.root, text=icon, font=("Arial", 35), bg="#1a1a1a", fg=color, 
+                        bd=0, cursor="hand2", activebackground="#333", command=cmd)
+        btn.place(relx=relx, rely=rely, anchor="center")
+        tk.Label(self.root, text=name, font=("Arial", 10, "bold"), bg="#1a1a1a", fg="white").place(relx=relx, rely=rely+0.07, anchor="center")
+
     def toggle_start_menu(self):
-        # إذا كانت القائمة موجودة، احذفها
         if self.start_menu and self.start_menu.winfo_exists():
             self.start_menu.destroy()
             self.start_menu = None
         else:
-            # إنشاء القائمة كـ Toplevel
             self.start_menu = tk.Toplevel(self.root)
-            self.start_menu.overrideredirect(True) # بدون حواف
-            self.start_menu.configure(bg="#1e1e1e", bd=2, relief="flat")
-            
-            # حساب الأبعاد والموقع (فوق التاسك بار بالضبط)
-            screen_height = self.root.winfo_height()
-            self.start_menu.geometry(f"300x400+5+{screen_height - 455}")
-            
-            # التأكد من ظهورها فوق كل شيء
+            self.start_menu.overrideredirect(True)
+            self.start_menu.configure(bg="#1e1e1e", bd=1, relief="solid")
+            h = self.root.winfo_height()
+            self.start_menu.geometry(f"280x400+5+{h-455}")
             self.start_menu.attributes("-topmost", True)
             
-            # محتويات القائمة
-            tk.Label(self.start_menu, text="BATATA OS MENU", bg="#FFD700", fg="black", 
-                     font=("Arial", 10, "bold"), pady=10).pack(fill="x")
+            tk.Label(self.start_menu, text="BATATA MENU", bg="#333", fg="gold", pady=10).pack(fill="x")
+            items = [("Terminal", "📟", self.open_terminal), ("Browser", "🌐", self.open_browser)]
+            for text, icon, cmd in items:
+                tk.Button(self.start_menu, text=f"{icon} {text}", bg="#1e1e1e", fg="white", bd=0, 
+                          anchor="w", padx=20, pady=10, command=lambda c=cmd:[c(), self.start_menu.destroy()]).pack(fill="x")
             
-            def add_item(text, icon, cmd):
-                tk.Button(self.start_menu, text=f"{icon} {text}", bg="#1e1e1e", fg="white",
-                          font=("Arial", 11), bd=0, anchor="w", padx=20, pady=10,
-                          activebackground="#333", command=lambda: [cmd(), self.toggle_start_menu()]).pack(fill="x")
-
-            add_item("Terminal", "📟", self.open_terminal)
-            add_item("Browser", "🌐", self.open_browser)
-            add_item("Settings", "⚙️", lambda: print("Settings"))
-            tk.Frame(self.start_menu, bg="#333", height=1).pack(fill="x", pady=10)
-            add_item("Shutdown", "🔴", self.root.destroy)
-
-    # --- وظائف مساعدة ---
-    def create_smart_icon(self, name, icon, relx, rely, command, color):
-        btn = tk.Button(self.root, text=icon, font=("Arial", 35), bg="#1a1a1a", fg=color, 
-                        bd=0, cursor="hand2", activebackground="#333", command=command)
-        btn.place(relx=relx, rely=rely, anchor="center")
-        lbl = tk.Label(self.root, text=name, font=("Arial", 11, "bold"), bg="#1a1a1a", fg="white")
-        lbl.place(relx=relx, rely=rely + 0.07, anchor="center")
+            tk.Button(self.start_menu, text="🔴 Shutdown", bg="#1e1e1e", fg="red", bd=0, command=self.root.destroy).pack(fill="x", side="bottom")
 
     def open_terminal(self):
-        bat_file = os.path.join(BASE_DIR, "batata_term.bat")
-        if os.path.exists(bat_file):
-            subprocess.Popen(['cmd.exe', '/k', bat_file], creationflags=subprocess.CREATE_NEW_CONSOLE)
+        # البحث عن ملف الباتش في نفس مجلد main_os
+        term_path = os.path.join(CURRENT_DIR, "batata_term.bat")
+        if os.path.exists(term_path):
+            subprocess.Popen(['cmd.exe', '/k', term_path], creationflags=subprocess.CREATE_NEW_CONSOLE)
+        else:
+            messagebox.showerror("System Error", "Terminal Script missing!")
 
     def open_browser(self):
         webbrowser.open("https://www.google.com")
@@ -92,7 +86,6 @@ class BatataOS:
         self.root.after(1000, self.update_clock)
 
 if __name__ == "__main__":
-    import webbrowser
     root = tk.Tk()
     app = BatataOS(root)
     root.mainloop()
